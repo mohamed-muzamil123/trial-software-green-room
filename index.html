@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Room Panel - Fest Management Software</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom, #f0f2f5, #ffffff);
+            min-height: 100vh;
+        }
+        .header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .search-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .programme-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        .programme-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        .student-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .student-card:hover {
+            transform: scale(1.02);
+        }
+        .student-card.flipped {
+            background: var(--success-gradient);
+            color: white;
+        }
+        .student-card .code-letter {
+            font-size: 2rem;
+            font-weight: bold;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .student-card.flipped .code-letter {
+            opacity: 1;
+        }
+        .btn {
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .attendance-btn {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        .modal-content {
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .toast-container {
+            z-index: 1055;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        @media (max-width: 768px) {
+            main {
+                padding: 1rem;
+            }
+            .programme-card, .student-card {
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0 fw-bold">Green Room Panel</h1>
+            <button class="btn btn-light" onclick="toggleView()">Toggle View</button>
+        </div>
+    </header>
+
+    <main class="container-fluid p-4">
+        <!-- Search Programmes -->
+        <div id="searchSection">
+            <div class="search-section">
+                <h2 class="mb-3 fw-bold text-dark">Search Programmes</h2>
+                <div class="input-group mb-4">
+                    <input type="text" class="form-control" id="programmeSearch" placeholder="Enter programme name..." onkeyup="searchProgrammes()">
+                    <button class="btn btn-primary" type="button"><i class="bi bi-search"></i></button>
+                </div>
+                <div id="programmeCards" class="row"></div>
+            </div>
+        </div>
+
+        <!-- Attendance Interface -->
+        <div id="attendanceSection" class="d-none">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between">
+                    <h5 class="mb-0 fw-bold">Attendance for <span id="currentProgrammeName"></span></h5>
+                    <button class="btn btn-outline-light btn-sm" onclick="backToSearch()">Back to Search</button>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="attendanceTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="mark-tab" data-bs-toggle="tab" data-bs-target="#markAttendance" type="button" role="tab">Mark Attendance</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link disabled" id="code-tab" data-bs-toggle="tab" data-bs-target="#assignCodes" type="button" role="tab">Assign Codes</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link disabled" id="submit-tab" data-bs-toggle="tab" data-bs-target="#submitData" type="button" role="tab">Submit</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3" id="attendanceTabContent">
+                        <!-- Mark Attendance Tab -->
+                        <div class="tab-pane fade show active" id="markAttendance" role="tabpanel">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" id="markSearch" placeholder="Search by name, team, chest..." onkeyup="filterStudents('mark')">
+                                </div>
+                            </div>
+                            <div class="row" id="markStudents"></div>
+                            <button class="btn btn-success mt-3" onclick="proceedToCodes()">Proceed to Code Assignment</button>
+                        </div>
+
+                        <!-- Assign Codes Tab -->
+                        <div class="tab-pane fade" id="assignCodes" role="tabpanel">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" id="codeSearch" placeholder="Search by name, team, chest..." onkeyup="filterStudents('code')">
+                                </div>
+                            </div>
+                            <div class="row" id="codeStudents"></div>
+                            <button class="btn btn-primary mt-3" onclick="openSwapModal()">Swap Codes</button>
+                            <button class="btn btn-success mt-3 ms-2" onclick="proceedToSubmit()">Proceed to Submit</button>
+                        </div>
+
+                        <!-- Submit Tab -->
+                        <div class="tab-pane fade" id="submitData" role="tabpanel">
+                            <p class="text-muted">Review attendance and codes before submission.</p>
+                            <div class="row" id="submitStudents"></div>
+                            <button class="btn btn-success w-100 mt-3" onclick="completeProgramme()">Programme Completed Successfully</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Completed Programmes -->
+        <div id="viewSection" class="d-none">
+            <div class="search-section">
+                <h2 class="mb-3 fw-bold text-dark">View Completed Programmes</h2>
+                <div class="input-group mb-4">
+                    <input type="text" class="form-control" id="viewSearch" placeholder="Enter programme name..." onkeyup="searchCompletedProgrammes()">
+                    <button class="btn btn-primary" type="button"><i class="bi bi-search"></i></button>
+                </div>
+                <div id="completedProgrammeCards" class="row"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Swap Modal -->
+    <div class="modal fade" id="swapModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Swap Code Letters</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Student 1</label>
+                            <select class="form-select" id="swapStudent1">
+                                <option value="">Select Student</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Student 2</label>
+                            <select class="form-select" id="swapStudent2">
+                                <option value="">Select Student</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="performSwap()">Swap</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body" id="toastBody"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0eal8jWB6ksEpFCEYMRIOhzpAROwlXns",
+            authDomain: "festhub-d7138.firebaseapp.com",
+            projectId: "festhub-d7138",
+            storageBucket: "festhub-d7138.firebasestorage.app",
+            messagingSenderId: "396565568701",
+            appId: "1:396565568701:web:c2c4001be99eef231a6bd4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentProgramme = null;
+        let allStudents = [];
+        let presentStudents = [];
+        let codeLetters = {};
+        let viewMode = false;
+
+        // Utils
+        window.showToast = function(message, type = 'success') {
+            const toastEl = document.getElementById('liveToast');
+            const toastBody = document.getElementById('toastBody');
+            toastBody.textContent = message;
+            toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        };
+
+        window.toggleView = function() {
+            viewMode = !viewMode;
+            document.getElementById('searchSection').classList.toggle('d-none', viewMode);
+            document.getElementById('viewSection').classList.toggle('d-none', !viewMode);
+            document.getElementById('attendanceSection').classList.add('d-none');
+            if (viewMode) {
+                searchCompletedProgrammes();
+            } else {
+                document.getElementById('programmeCards').innerHTML = '<div class="alert alert-info text-center">Please enter a programme name to search.</div>';
+            }
+        };
+
+        window.backToSearch = function() {
+            currentProgramme = null;
+            presentStudents = [];
+            codeLetters = {};
+            document.getElementById('attendanceSection').classList.add('d-none');
+            document.getElementById('searchSection').classList.remove('d-none');
+            document.getElementById('programmeSearch').value = '';
+            document.getElementById('programmeCards').innerHTML = '<div class="alert alert-info text-center">Please enter a programme name to search.</div>';
+        };
+
+        // Load Data
+        async function loadStudents() {
+            try {
+                const snapshot = await getDocs(collection(db, 'students'));
+                allStudents = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                allStudents.sort((a, b) => a.chestNo.localeCompare(b.chestNo));
+            } catch (error) {
+                showToast('Error loading students: ' + error.message, 'danger');
+            }
+        }
+
+        // Programme Search
+        window.searchProgrammes = async function() {
+            const searchTerm = document.getElementById('programmeSearch').value.toLowerCase();
+            const cardsDiv = document.getElementById('programmeCards');
+            cardsDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+            try {
+                const snapshot = await getDocs(collection(db, 'programmes'));
+                const programmes = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => !p.attendedStudents && p.name.toLowerCase().includes(searchTerm));
+                if (searchTerm === '') {
+                    cardsDiv.innerHTML = '<div class="alert alert-info text-center">Please enter a programme name to search.</div>';
+                } else {
+                    const cards = programmes.map(p => `
+                        <div class="col-md-4">
+                            <div class="programme-card">
+                                <h5 class="fw-bold">${p.category} - ${p.name}</h5>
+                                <p class="text-muted">Type: ${p.type}${p.category === 'General' ? ` (Max: ${p.participantCount})` : ''}</p>
+                                <button class="btn btn-primary" onclick="startProgramme('${p.id}')">Start Programme</button>
+                            </div>
+                        </div>
+                    `).join('');
+                    cardsDiv.innerHTML = cards || '<div class="alert alert-info text-center">No programmes found.</div>';
+                }
+            } catch (error) {
+                showToast('Error searching programmes: ' + error.message, 'danger');
+                cardsDiv.innerHTML = '<div class="alert alert-danger text-center">Error loading programmes.</div>';
+            }
+        };
+
+        window.startProgramme = async function(progId) {
+            try {
+                document.getElementById('attendanceSection').classList.add('loading');
+                const progDoc = await getDoc(doc(db, 'programmes', progId));
+                if (!progDoc.exists()) {
+                    showToast('Programme not found', 'danger');
+                    return;
+                }
+                currentProgramme = { id: progId, ...progDoc.data() };
+                if (currentProgramme.attendedStudents) {
+                    showToast('Programme already completed', 'danger');
+                    return;
+                }
+                document.getElementById('currentProgrammeName').textContent = currentProgramme.name;
+                presentStudents = [];
+                codeLetters = {};
+                const assignedIds = currentProgramme.assignedStudents || [];
+                const assignedStudents = allStudents.filter(s => assignedIds.includes(s.id));
+                renderMarkAttendance(assignedStudents);
+                document.getElementById('searchSection').classList.add('d-none');
+                document.getElementById('attendanceSection').classList.remove('d-none');
+                document.getElementById('attendanceSection').classList.remove('loading');
+                document.querySelector('#code-tab').classList.add('disabled');
+                document.querySelector('#submit-tab').classList.add('disabled');
+                document.querySelector('#mark-tab').click();
+            } catch (error) {
+                showToast('Error starting programme: ' + error.message, 'danger');
+                document.getElementById('attendanceSection').classList.remove('loading');
+            }
+        };
+
+        function renderMarkAttendance(students) {
+            const row = document.getElementById('markStudents');
+            row.innerHTML = students.map(s => `
+                <div class="col-md-4">
+                    <div class="student-card" data-id="${s.id}" data-present="${presentStudents.includes(s.id)}">
+                        <h6>${s.chestNo} - ${s.name}</h6>
+                        <p class="text-muted">${s.team}</p>
+                        <button class="btn btn-outline-${presentStudents.includes(s.id) ? 'success' : 'secondary'} attendance-btn" onclick="toggleAttendance('${s.id}', this)">
+                            Mark ${presentStudents.includes(s.id) ? 'Present' : 'Absent'}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.toggleAttendance = function(id, btn) {
+            const card = btn.closest('.student-card');
+            const isPresent = card.dataset.present === 'true';
+            card.dataset.present = !isPresent;
+            btn.textContent = isPresent ? 'Mark Absent' : 'Mark Present';
+            btn.className = isPresent ? 'btn btn-outline-secondary attendance-btn' : 'btn btn-success attendance-btn';
+            if (!isPresent) {
+                presentStudents.push(id);
+            } else {
+                presentStudents = presentStudents.filter(p => p !== id);
+                delete codeLetters[id];
+            }
+        };
+
+        window.proceedToCodes = function() {
+            if (presentStudents.length === 0) {
+                showToast('Please mark at least one student present', 'danger');
+                return;
+            }
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').slice(0, presentStudents.length);
+            const shuffledStudents = [...presentStudents].sort(() => Math.random() - 0.5);
+            shuffledStudents.forEach((id, index) => {
+                codeLetters[id] = letters[index];
+            });
+            renderCodeAssignment(presentStudents.map(id => allStudents.find(s => s.id === id)));
+            document.querySelector('#code-tab').classList.remove('disabled');
+            document.querySelector('#code-tab').click();
+        };
+
+        function renderCodeAssignment(students) {
+            const row = document.getElementById('codeStudents');
+            row.innerHTML = students.map(s => `
+                <div class="col-md-3">
+                    <div class="student-card" data-id="${s.id}" data-flipped="false" onclick="flipCard(this)">
+                        <h6>${s.chestNo} - ${s.name}</h6>
+                        <p class="text-muted">${s.team}</p>
+                        <span class="code-letter">${codeLetters[s.id]}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.flipCard = function(card) {
+            card.classList.toggle('flipped');
+            card.dataset.flipped = card.classList.contains('flipped');
+        };
+
+        window.openSwapModal = function() {
+            const present = presentStudents.map(id => allStudents.find(s => s.id === id));
+            const options = '<option value="">Select Student</option>' + present.map(s => `<option value="${s.id}">${s.chestNo} - ${s.name}</option>`).join('');
+            document.getElementById('swapStudent1').innerHTML = options;
+            document.getElementById('swapStudent2').innerHTML = options;
+            new bootstrap.Modal(document.getElementById('swapModal')).show();
+        };
+
+        window.performSwap = function() {
+            const id1 = document.getElementById('swapStudent1').value;
+            const id2 = document.getElementById('swapStudent2').value;
+            if (!id1 || !id2 || id1 === id2) {
+                showToast('Select two different students to swap', 'danger');
+                return;
+            }
+            const temp = codeLetters[id1];
+            codeLetters[id1] = codeLetters[id2];
+            codeLetters[id2] = temp;
+            showToast('Codes swapped successfully');
+            renderCodeAssignment(presentStudents.map(id => allStudents.find(s => s.id === id)));
+            bootstrap.Modal.getInstance(document.getElementById('swapModal')).hide();
+        };
+
+        window.proceedToSubmit = function() {
+            document.querySelector('#submit-tab').classList.remove('disabled');
+            document.querySelector('#submit-tab').click();
+            renderSubmitTab();
+        };
+
+        function renderSubmitTab() {
+            const students = presentStudents.map(id => allStudents.find(s => s.id === id));
+            const row = document.getElementById('submitStudents');
+            row.innerHTML = students.map(s => `
+                <div class="col-md-3">
+                    <div class="student-card flipped" data-id="${s.id}">
+                        <h6>${s.chestNo} - ${s.name}</h6>
+                        <p class="text-muted">${s.team}</p>
+                        <span class="code-letter">${codeLetters[s.id]}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.completeProgramme = async function() {
+            if (!currentProgramme || presentStudents.length === 0) {
+                showToast('No students marked present', 'danger');
+                return;
+            }
+            try {
+                document.getElementById('attendanceSection').classList.add('loading');
+                const absentStudents = currentProgramme.assignedStudents.filter(id => !presentStudents.includes(id));
+                await updateDoc(doc(db, 'programmes', currentProgramme.id), {
+                    attendedStudents: presentStudents,
+                    absentStudents: absentStudents,
+                    codeLetters: codeLetters
+                });
+                showToast('Programme completed successfully');
+                backToSearch();
+            } catch (error) {
+                showToast('Error completing programme: ' + error.message, 'danger');
+            } finally {
+                document.getElementById('attendanceSection').classList.remove('loading');
+            }
+        };
+
+        window.filterStudents = function(tab) {
+            const search = document.getElementById(`${tab}Search`).value.toLowerCase();
+            let students = tab === 'mark' ? allStudents.filter(s => currentProgramme.assignedStudents.includes(s.id)) : presentStudents.map(id => allStudents.find(s => s.id === id));
+            students = students.filter(s => s.name.toLowerCase().includes(search) || s.team.toLowerCase().includes(search) || (s.chestNo || '').toLowerCase().includes(search));
+            if (tab === 'mark') {
+                renderMarkAttendance(students);
+            } else if (tab === 'code') {
+                renderCodeAssignment(students);
+            } else {
+                renderSubmitTab(students);
+            }
+        };
+
+        window.searchCompletedProgrammes = async function() {
+            const searchTerm = document.getElementById('viewSearch').value.toLowerCase();
+            const cardsDiv = document.getElementById('completedProgrammeCards');
+            cardsDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+            try {
+                const snapshot = await getDocs(collection(db, 'programmes'));
+                const programmes = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.attendedStudents && p.name.toLowerCase().includes(searchTerm));
+                if (searchTerm === '') {
+                    cardsDiv.innerHTML = '<div class="alert alert-info text-center">Please enter a programme name to search.</div>';
+                } else {
+                    const cards = programmes.map(p => `
+                        <div class="col-md-4">
+                            <div class="programme-card">
+                                <h5 class="fw-bold">${p.category} - ${p.name}</h5>
+                                <p class="text-muted">Attended: ${p.attendedStudents.length}, Absent: ${p.absentStudents.length}</p>
+                                <button class="btn btn-info" onclick="viewProgramme('${p.id}')">View Programme</button>
+                            </div>
+                        </div>
+                    `).join('');
+                    cardsDiv.innerHTML = cards || '<div class="alert alert-info text-center">No completed programmes found.</div>';
+                }
+            } catch (error) {
+                showToast('Error searching completed programmes: ' + error.message, 'danger');
+                cardsDiv.innerHTML = '<div class="alert alert-danger text-center">Error loading programmes.</div>';
+            }
+        };
+
+        window.viewProgramme = async function(progId) {
+            try {
+                document.getElementById('attendanceSection').classList.add('loading');
+                const progDoc = await getDoc(doc(db, 'programmes', progId));
+                if (!progDoc.exists()) {
+                    showToast('Programme not found', 'danger');
+                    return;
+                }
+                currentProgramme = { id: progId, ...progDoc.data() };
+                document.getElementById('currentProgrammeName').textContent = currentProgramme.name;
+                presentStudents = currentProgramme.attendedStudents || [];
+                codeLetters = currentProgramme.codeLetters || {};
+                document.getElementById('viewSection').classList.add('d-none');
+                document.getElementById('attendanceSection').classList.remove('d-none');
+                document.getElementById('attendanceTabs').classList.add('d-none');
+                document.getElementById('attendanceTabContent').innerHTML = '<div class="tab-pane fade show active" id="viewCompleted" role="tabpanel"></div>';
+                document.getElementById('viewCompleted').innerHTML = `
+                    <div class="row">
+                        <div class="col-12">
+                            <h5>Attended Students</h5>
+                            <div class="row">
+                                ${presentStudents.map(id => {
+                                    const s = allStudents.find(s => s.id === id);
+                                    return `
+                                        <div class="col-md-3">
+                                            <div class="student-card flipped">
+                                                <h6>${s.chestNo} - ${s.name}</h6>
+                                                <p class="text-muted">${s.team}</p>
+                                                <span class="code-letter">${codeLetters[id]}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                            <h5>Absent Students</h5>
+                            <div class="row">
+                                ${currentProgramme.absentStudents.map(id => {
+                                    const s = allStudents.find(s => s.id === id);
+                                    return `
+                                        <div class="col-md-3">
+                                            <div class="student-card">
+                                                <h6>${s.chestNo} - ${s.name}</h6>
+                                                <p class="text-muted">${s.team}</p>
+                                                <p>Absent</p>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('attendanceSection').classList.remove('loading');
+            } catch (error) {
+                showToast('Error viewing programme: ' + error.message, 'danger');
+                document.getElementById('attendanceSection').classList.remove('loading');
+            }
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('attendanceSection').classList.add('loading');
+            await loadStudents();
+            document.getElementById('attendanceSection').classList.remove('loading');
+            document.getElementById('programmeCards').innerHTML = '<div class="alert alert-info text-center">Please enter a programme name to search.</div>';
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>
