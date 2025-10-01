@@ -295,9 +295,14 @@
             presentStudents = [];
             codeLetters = {};
             document.getElementById('attendanceSection').classList.add('d-none');
-            document.getElementById('searchSection').classList.remove('d-none');
-            document.getElementById('programmeSearch').value = '';
-            document.getElementById('programmeCards').innerHTML = '<div class="alert alert-info text-center">Please enter a programme name to search.</div>';
+            if (viewMode) {
+                document.getElementById('viewSection').classList.remove('d-none');
+                searchCompletedProgrammes();
+            } else {
+                document.getElementById('searchSection').classList.remove('d-none');
+                document.getElementById('programmeSearch').value = '';
+                document.getElementById('programmeCards').innerHTML = '<div class="alert alert-info text-center">Please enter a programme name to search.</div>';
+            }
         };
 
         // Load Data
@@ -318,16 +323,17 @@
             cardsDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
             try {
                 const snapshot = await getDocs(collection(db, 'programmes'));
-                const programmes = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => !p.attendedStudents && p.name.toLowerCase().includes(searchTerm));
+                const programmes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                const filteredProgrammes = programmes.filter(p => p.name.toLowerCase().includes(searchTerm));
                 if (searchTerm === '') {
                     cardsDiv.innerHTML = '<div class="alert alert-info text-center">Please enter a programme name to search.</div>';
                 } else {
-                    const cards = programmes.map(p => `
+                    const cards = filteredProgrammes.map(p => `
                         <div class="col-md-4">
                             <div class="programme-card">
                                 <h5 class="fw-bold">${p.category} - ${p.name}</h5>
                                 <p class="text-muted">Type: ${p.type}${p.category === 'General' ? ` (Max: ${p.participantCount})` : ''}</p>
-                                <button class="btn btn-primary" onclick="startProgramme('${p.id}')">Start Programme</button>
+                                <button class="btn ${p.attendedStudents ? 'btn-secondary' : 'btn-primary'}" ${p.attendedStudents ? 'disabled' : ''} onclick="${p.attendedStudents ? '' : `startProgramme('${p.id}')`}">${p.attendedStudents ? 'Finished' : 'Start Programme'}</button>
                             </div>
                         </div>
                     `).join('');
@@ -377,22 +383,23 @@
                     <div class="student-card" data-id="${s.id}" data-present="${presentStudents.includes(s.id)}">
                         <h6>${s.chestNo} - ${s.name}</h6>
                         <p class="text-muted">${s.team}</p>
-                        <button class="btn btn-outline-${presentStudents.includes(s.id) ? 'success' : 'secondary'} attendance-btn" onclick="toggleAttendance('${s.id}', this)">
-                            Mark ${presentStudents.includes(s.id) ? 'Present' : 'Absent'}
-                        </button>
+                        <select class="form-select attendance-select" onchange="toggleAttendance('${s.id}', this)">
+                            <option value="Absent" ${!presentStudents.includes(s.id) ? 'selected' : ''}>Absent</option>
+                            <option value="Present" ${presentStudents.includes(s.id) ? 'selected' : ''}>Present</option>
+                        </select>
                     </div>
                 </div>
             `).join('');
         }
 
-        window.toggleAttendance = function(id, btn) {
-            const card = btn.closest('.student-card');
-            const isPresent = card.dataset.present === 'true';
-            card.dataset.present = !isPresent;
-            btn.textContent = isPresent ? 'Mark Absent' : 'Mark Present';
-            btn.className = isPresent ? 'btn btn-outline-secondary attendance-btn' : 'btn btn-success attendance-btn';
-            if (!isPresent) {
-                presentStudents.push(id);
+        window.toggleAttendance = function(id, select) {
+            const card = select.closest('.student-card');
+            const isPresent = select.value === 'Present';
+            card.dataset.present = isPresent;
+            if (isPresent) {
+                if (!presentStudents.includes(id)) {
+                    presentStudents.push(id);
+                }
             } else {
                 presentStudents = presentStudents.filter(p => p !== id);
                 delete codeLetters[id];
